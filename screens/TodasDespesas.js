@@ -1,34 +1,67 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import React, { useState, useMemo } from 'react';
+import { View, Text, StyleSheet, Pressable, TextInput, Alert, useColorScheme } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import GlobalWrapper from '../components/GlobalWrapper';
 import DespesaSaida from '../components/despesa/DespesaSaida';
-
-// Dados fictícios para testar a filtragem e os cálculos
-const DESPESAS_MOCK = [
-  { id: 'd1', descricao: 'Almoço Restaurante', valor: 45.50, data: '2026-10-25', categoria: 'Alimentação' },
-  { id: 'd2', descricao: 'Uber para Casa', valor: 35.00, data: '2026-10-26', categoria: 'Transporte' },
-  { id: 'd3', descricao: 'Conta de Luz', valor: 150.00, data: '2026-10-27', categoria: 'Contas' },
-  { id: 'd4', descricao: 'Cinema', valor: 60.00, data: '2026-10-28', categoria: 'Lazer' },
-  { id: 'd5', descricao: 'Supermercado', valor: 210.00, data: '2026-10-28', categoria: 'Alimentação' },
-];
+import { useExpenses } from '../store/expenses-context';
+import { useDebounce } from '../hooks/useDebounce';
+import { theme } from '../constants/theme';
 
 export default function TodasDespesas() {
+  const expensesContext = useExpenses();
+  const colorScheme = useColorScheme(); // Exigência da Tarefa 4 (uso de useColorScheme)
+  const currentTheme = theme[colorScheme] || theme.dark;
+
   const [categoriaFiltro, setCategoriaFiltro] = useState('Todas');
+  const [busca, setBusca] = useState('');
+  
+  // Atraso de 500ms na digitação para não travar a lista
+  const buscaDebounced = useDebounce(busca, 500);
   
   const categoriasFiltro = ['Todas', 'Alimentação', 'Transporte', 'Lazer', 'Contas'];
 
-  // Função que filtra as despesas utilizando o método .filter() exigido
-  const despesasFiltradas = DESPESAS_MOCK.filter((despesa) => {
-    if (categoriaFiltro === 'Todas') {
-      return true;
-    }
-    return despesa.categoria === categoriaFiltro;
-  });
+  // Combinação dos dois filtros utilizando useMemo para performance
+  const despesasFiltradas = useMemo(() => {
+    return expensesContext.expenses.filter((despesa) => {
+      const matchCategoria = categoriaFiltro === 'Todas' || despesa.category === categoriaFiltro;
+      const matchBusca = despesa.description.toLowerCase().includes(buscaDebounced.toLowerCase());
+      return matchCategoria && matchBusca;
+    });
+  }, [expensesContext.expenses, categoriaFiltro, buscaDebounced]);
+
+  // Desafio Extra: Limpar Tudo
+  function limparTudoHandler() {
+    Alert.alert('Atenção!', 'Tem a certeza que deseja excluir TODAS as despesas? Esta ação é irreversível.', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Limpar Tudo', style: 'destructive', onPress: () => expensesContext.clearExpenses() }
+    ]);
+  }
 
   return (
     <GlobalWrapper>
       <View style={styles.container}>
-        {/* Menu de Filtros de Categoria */}
+        
+        {/* Barra de Pesquisa e Botão Limpar */}
+        <View style={styles.headerAcoes}>
+          <View style={[styles.buscaContainer, { backgroundColor: currentTheme.inputBackground, borderColor: currentTheme.border }]}>
+            <Ionicons name="search" size={20} color={currentTheme.textSecondary} />
+            <TextInput
+              style={[styles.inputBusca, { color: currentTheme.textPrimary }]}
+              placeholder="Buscar despesa..."
+              placeholderTextColor={currentTheme.textSecondary}
+              value={busca}
+              onChangeText={setBusca}
+            />
+          </View>
+          
+          {expensesContext.expenses.length > 0 && (
+            <Pressable style={styles.limparBotao} onPress={limparTudoHandler}>
+              <Ionicons name="trash-outline" size={20} color="#EF4444" />
+            </Pressable>
+          )}
+        </View>
+
+        {/* Filtro de Categorias (Chips) */}
         <View style={styles.filtrosContainer}>
           {categoriasFiltro.map((cat) => (
             <Pressable
@@ -43,8 +76,7 @@ export default function TodasDespesas() {
           ))}
         </View>
 
-        {/* Componente que renderiza o somatório e a lista com os dados filtrados */}
-        <DespesaSaida despesas={despesasFiltradas} periodoNome="Total Filtrado" />
+        <DespesaSaida despesas={despesasFiltradas} periodoNome="Total Exibido" />
       </View>
     </GlobalWrapper>
   );
@@ -52,19 +84,20 @@ export default function TodasDespesas() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, width: '100%' },
-  filtrosContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 20,
+  headerAcoes: { flexDirection: 'row', gap: 12, marginBottom: 16, paddingHorizontal: 8 },
+  buscaContainer: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12,
+    borderRadius: 12, borderWidth: 1, height: 48
   },
+  inputBusca: { flex: 1, marginLeft: 8, fontSize: 15 },
+  limparBotao: {
+    width: 48, height: 48, borderRadius: 12, borderWidth: 1, borderColor: '#451a1a', 
+    backgroundColor: '#2a1215', justifyContent: 'center', alignItems: 'center'
+  },
+  filtrosContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20, paddingHorizontal: 8 },
   filtroBotao: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 12,
-    backgroundColor: '#1B2130',
-    borderWidth: 1,
-    borderColor: '#202638',
+    paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12,
+    backgroundColor: '#1B2130', borderWidth: 1, borderColor: '#202638',
   },
   filtroBotaoAtivo: { backgroundColor: '#7C3AED', borderColor: '#7C3AED' },
   filtroTexto: { color: '#9CA3AF', fontSize: 13, fontWeight: '600' },

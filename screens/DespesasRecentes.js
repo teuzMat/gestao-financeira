@@ -2,19 +2,25 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import GlobalWrapper from '../components/GlobalWrapper';
 import DespesaSaida from '../components/despesa/DespesaSaida';
-
-// Dados fictícios simulando despesas recentes
-const DESPESAS_MOCK_RECENTES = [
-  { id: 'd1', descricao: 'Almoço Restaurante', valor: 45.50, data: '2026-10-25', categoria: 'Alimentação' },
-  { id: 'd2', descricao: 'Uber para Casa', valor: 35.00, data: '2026-10-26', categoria: 'Transporte' },
-];
+import { useExpenses } from '../store/expenses-context';
 
 export default function DespesasRecentes() {
+  const expensesContext = useExpenses();
+
+  // Filtra as despesas globais para retornar apenas as dos últimos 7 dias
+  const recentExpenses = expensesContext.expenses.filter((expense) => {
+    const today = new Date();
+    const date7DaysAgo = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 7);
+    const expenseDate = new Date(expense.date);
+    
+    return expenseDate >= date7DaysAgo && expenseDate <= today;
+  });
+
   return (
     <GlobalWrapper>
       <View style={styles.container}>
         <DespesaSaida 
-          despesas={DESPESAS_MOCK_RECENTES} 
+          despesas={recentExpenses} 
           periodoNome="Últimos 7 Dias" 
         />
       </View>
@@ -23,8 +29,5 @@ export default function DespesasRecentes() {
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    width: '100%' 
-  },
+  container: { flex: 1, width: '100%' },
 });

@@ -2,8 +2,10 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
 export default function DespesaSumario({ despesas, periodoNome }) {
-  const total = despesas.reduce((acumulador, item) => acumulador + item.valor, 0);
-  const corDoValor = total > 200 ? '#EF4444' : '#7C3AED'; // Desafio Extra com Vermelho Erro
+  // Alterado de item.valor para item.amount
+  const total = despesas.reduce((acumulador, item) => acumulador + (item.amount || 0), 0);
+  
+  const corDoValor = total > 200 ? '#EF4444' : '#7C3AED'; 
 
   return (
     <View style={styles.container}>
@@ -28,5 +30,5 @@ const styles = StyleSheet.create({
     borderColor: '#252B3A',
   },
   periodo: { fontSize: 14, color: '#D1D5DB', fontWeight: '600' },
-  soma: { fontSize: 20, fontWeight: '800' },
+  soma: { fontSize: 20, fontWeight: '800', color: '#FFFFFF' },
 });
